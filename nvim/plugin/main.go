@@ -68,13 +68,9 @@ func Main(registerHandlers func(p *Plugin) error) {
 		log.Fatal(err)
 	}
 
-	quit := make(chan struct{}, 1)
+	quit := make(chan error, 1)
 	go func() {
-		if err := v.Serve(); err != nil {
-			quit <- struct{}{}
-			log.Fatal(err)
-		}
-		quit <- struct{}{}
+		quit <- v.Serve()
 	}()
 
 	client := getClientInfo("client")
@@ -83,7 +79,10 @@ func Main(registerHandlers func(p *Plugin) error) {
 		log.Fatal(err)
 	}
 
-	<-quit
+	err = <-quit
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getClientInfo(kind string) *nvim.Client {
