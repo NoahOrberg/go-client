@@ -4,6 +4,7 @@ package plugin
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -61,12 +62,40 @@ func Main(registerHandlers func(p *Plugin) error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	p := New(v)
 	if err := registerHandlers(p); err != nil {
 		log.Fatal(err)
 	}
-	if err := v.Serve(); err != nil {
+
+	quit := make(chan struct{}, 1)
+	go func() {
+		if err := v.Serve(); err != nil {
+			quit <- struct{}{}
+			log.Fatal(err)
+		}
+		quit <- struct{}{}
+	}()
+
+	client := getClientInfo("client")
+	if err := v.SetClientInfo(
+		client.Name, &client.Version, "remote", client.Methods, client.Attributes); err != nil {
 		log.Fatal(err)
+	}
+
+	<-quit
+}
+
+func getClientInfo(kind string) *nvim.Client {
+	// TODO: fill in the blank
+	return &nvim.Client{
+		Name:    fmt.Sprintf("go-%s", kind),
+		Version: nvim.ClientVersion{},
+		Methods: map[string]*nvim.ClientMethod{},
+		Attributes: nvim.ClientAttributes{
+			"license": "Apache v2",
+			"website": "github.com/neovim/go-client",
+		},
 	}
 }
 
